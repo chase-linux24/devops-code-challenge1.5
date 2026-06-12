@@ -1,0 +1,26 @@
+# Terraform - ignore downloaded providers and local state
+infrastructure/terraform/.terraform/
+infrastructure/terraform/*.tfstate
+infrastructure/terraform/*.tfstate.backup
+
+# The lock file IS committed to Git - do not add it here
+
+# Node modules - never commit these
+apps/backend/node_modules/
+apps/frontend/node_modules/
+
+# Frontend build output
+apps/frontend/build/
+
+# Secrets and keys
+*.pem
+*.key
+*.crt
+
+# Environment files
+.env
+.env.local
+
+# OS generated files
+.DS_Store
+Thumbs.db
