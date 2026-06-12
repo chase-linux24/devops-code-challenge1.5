@@ -6,12 +6,12 @@ output "vpc_id" {
 }
 
 output "public_subnet_ids" {
-    descriptions = "IDs of public subnets"
+    description = "IDs of public subnets"
     value        = aws_subnet.public[*].id
 }
 
 output "private_subnet_ids" {
-    descriptions = "IDs of private subnets
+    description = "IDs of private subnets"
     value        = aws_subnet.private[*].id
 }
 
@@ -30,20 +30,20 @@ output "alb_zone_id" {
 
 output "frontend_repository_url" {
     description  = "ECR repository URL for frontend image"
-    vale         = aws_ecr_repository.frontend._repository_url
+    value         = aws_ecr_repository.frontend.repository_url
 
 }
 
 output "backend_repository_url" {
     description = "ECR repository URL for backend image"
-    vale        = aws_ecr_repository.backend.repository_url
+    value        = aws_ecr_repository.backend.repository_url
 }
 
 # ── ECS Outputs ───────────────────────────────────────
 
 output "ecs_cluster_name" {
     description   = "Name of the ECS cluster"
-    vale          = aws_ecs_cluster.main.name
+    value          = aws_ecs_cluster.main.name
 }
 
 output "ecs_cluster_arn" {
@@ -51,12 +51,12 @@ output "ecs_cluster_arn" {
     value         = aws_ecs_cluster.main.id
 }
 
-output "frontend_service_name"
+output "frontend_service_name" {
     description       = "Name of the frontend ECS service"
     value             = aws_ecs_service.frontend.name
 }
 
-output "backend_service_name"
+output "backend_service_name" {
     description       = "Name of the backend ECS service"
     value             = aws_ecs_service.backend.name
 }

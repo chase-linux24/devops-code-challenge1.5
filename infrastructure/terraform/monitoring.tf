@@ -1,11 +1,11 @@
 # ── Monitoring EC2 Instance ───────────────────────────
-data "aws_ami" "amazon_linuix_2023" {
+data "aws_ami" "amazon_linux_2023" {
     most_recent = true
     owners      = ["amazon"]
 
     filter {
         name  = "name"
-        vales = ["al2023-ami-*-x86_64"]
+        values = ["al2023-ami-*-x86_64"]
     }
 
     filter {
@@ -15,7 +15,7 @@ data "aws_ami" "amazon_linuix_2023" {
 }
 
 resource "aws_instance" "monitoring" {
-    ami                    = data.aws_awi.amazon_linuix_2023.id
+    ami                    = data.aws_ami.amazon_linux_2023.id
     instance_type          =  var.monitoring_instance_type
     key_name               = var.key_pair_name
     subnet_id              = aws_subnet.public[0].id
