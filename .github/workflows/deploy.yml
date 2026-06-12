@@ -28,12 +28,12 @@ jobs:
       - name: Install and test backend
         run: |
           cd apps/backend
-          npm ci
+          npm install
           npm test --if-present
       - name: Install and test frontend
         run: |
           cd apps/frontend
-          npm ci
+          npm install
           npm test --if-present -- --watchAll=false
 
   infrastructure:
