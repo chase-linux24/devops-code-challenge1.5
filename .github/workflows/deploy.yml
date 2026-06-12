@@ -21,24 +21,22 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-
       - name: Install and test backend
         run: |
           cd apps/backend
           npm ci
           npm test --if-present
-
       - name: Install and test frontend
         run: |
           cd apps/frontend
           npm ci
           npm test --if-present -- --watchAll=false
-          infrastructure:
+
+  infrastructure:
     name: Provision Infrastructure
     runs-on: ubuntu-latest
     needs: test
@@ -50,35 +48,28 @@ jobs:
       frontend_service: ${{ steps.tf_outputs.outputs.frontend_service }}
       backend_service: ${{ steps.tf_outputs.outputs.backend_service }}
       monitoring_ip: ${{ steps.tf_outputs.outputs.monitoring_ip }}
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
       - name: Configure AWS credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::381491979307:role/github-actions-devops-challenge
           aws-region: ${{ env.AWS_REGION }}
-
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: '~1.5'
           terraform_wrapper: false
-
       - name: Terraform Init
         working-directory: ${{ env.TF_DIR }}
         run: terraform init
-
       - name: Terraform Plan
         working-directory: ${{ env.TF_DIR }}
         run: terraform plan -out=tfplan
-
       - name: Terraform Apply
         working-directory: ${{ env.TF_DIR }}
         run: terraform apply -auto-approve tfplan
-
       - name: Capture Terraform Outputs
         id: tf_outputs
         working-directory: ${{ env.TF_DIR }}
@@ -91,103 +82,66 @@ jobs:
           echo "backend_service=$(terraform output -raw backend_service_name)" >> $GITHUB_OUTPUT
           echo "monitoring_ip=$(terraform output -raw monitoring_public_ip)" >> $GITHUB_OUTPUT
 
-          build-and-push:
+  build-and-push:
     name: Build and Push Docker Images
     runs-on: ubuntu-latest
     needs: infrastructure
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
       - name: Configure AWS credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::381491979307:role/github-actions-devops-challenge
           aws-region: ${{ env.AWS_REGION }}
-
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
-
       - name: Build and push frontend image
         run: |
-          docker build \
-            -t ${{ needs.infrastructure.outputs.frontend_repo }}:${{ github.sha }} \
-            apps/frontend/
-          docker push \
-            ${{ needs.infrastructure.outputs.frontend_repo }}:${{ github.sha }}
-
+          docker build -t ${{ needs.infrastructure.outputs.frontend_repo }}:${{ github.sha }} apps/frontend/
+          docker push ${{ needs.infrastructure.outputs.frontend_repo }}:${{ github.sha }}
       - name: Build and push backend image
         run: |
-          docker build \
-            -t ${{ needs.infrastructure.outputs.backend_repo }}:${{ github.sha }} \
-            apps/backend/
-          docker push \
-            ${{ needs.infrastructure.outputs.backend_repo }}:${{ github.sha }}
+          docker build -t ${{ needs.infrastructure.outputs.backend_repo }}:${{ github.sha }} apps/backend/
+          docker push ${{ needs.infrastructure.outputs.backend_repo }}:${{ github.sha }}
 
-            deploy:
+  deploy:
     name: Deploy to ECS
     runs-on: ubuntu-latest
     needs: [infrastructure, build-and-push]
-
     steps:
       - name: Configure AWS credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::381491979307:role/github-actions-devops-challenge
           aws-region: ${{ env.AWS_REGION }}
-
       - name: Update frontend ECS service
         run: |
-          TASK_DEF=$(aws ecs describe-task-definition \
-            --task-definition devops-challenge-frontend \
-            --query 'taskDefinition' --output json)
+          TASK_DEF=$(aws ecs describe-task-definition --task-definition devops-challenge-frontend --query 'taskDefinition' --output json)
           NEW_TASK_DEF=$(echo $TASK_DEF | python3 -c "
           import json,sys
           td=json.load(sys.stdin)
           td['containerDefinitions'][0]['image']='${{ needs.infrastructure.outputs.frontend_repo }}:${{ github.sha }}'
           [td.pop(k,None) for k in ['taskDefinitionArn','revision','status','requiresAttributes','compatibilities','registeredAt','registeredBy']]
           print(json.dumps(td))")
-          NEW_ARN=$(aws ecs register-task-definition \
-            --cli-input-json "$NEW_TASK_DEF" \
-            --query 'taskDefinition.taskDefinitionArn' --output text)
-          aws ecs update-service \
-            --cluster ${{ needs.infrastructure.outputs.ecs_cluster }} \
-            --service ${{ needs.infrastructure.outputs.frontend_service }} \
-            --task-definition $NEW_ARN \
-            --force-new-deployment
-
+          NEW_ARN=$(aws ecs register-task-definition --cli-input-json "$NEW_TASK_DEF" --query 'taskDefinition.taskDefinitionArn' --output text)
+          aws ecs update-service --cluster ${{ needs.infrastructure.outputs.ecs_cluster }} --service ${{ needs.infrastructure.outputs.frontend_service }} --task-definition $NEW_ARN --force-new-deployment
       - name: Update backend ECS service
         run: |
-          TASK_DEF=$(aws ecs describe-task-definition \
-            --task-definition devops-challenge-backend \
-            --query 'taskDefinition' --output json)
+          TASK_DEF=$(aws ecs describe-task-definition --task-definition devops-challenge-backend --query 'taskDefinition' --output json)
           NEW_TASK_DEF=$(echo $TASK_DEF | python3 -c "
           import json,sys
           td=json.load(sys.stdin)
           td['containerDefinitions'][0]['image']='${{ needs.infrastructure.outputs.backend_repo }}:${{ github.sha }}'
           [td.pop(k,None) for k in ['taskDefinitionArn','revision','status','requiresAttributes','compatibilities','registeredAt','registeredBy']]
           print(json.dumps(td))")
-          NEW_ARN=$(aws ecs register-task-definition \
-            --cli-input-json "$NEW_TASK_DEF" \
-            --query 'taskDefinition.taskDefinitionArn' --output text)
-          aws ecs update-service \
-            --cluster ${{ needs.infrastructure.outputs.ecs_cluster }} \
-            --service ${{ needs.infrastructure.outputs.backend_service }} \
-            --task-definition $NEW_ARN \
-            --force-new-deployment
-
+          NEW_ARN=$(aws ecs register-task-definition --cli-input-json "$NEW_TASK_DEF" --query 'taskDefinition.taskDefinitionArn' --output text)
+          aws ecs update-service --cluster ${{ needs.infrastructure.outputs.ecs_cluster }} --service ${{ needs.infrastructure.outputs.backend_service }} --task-definition $NEW_ARN --force-new-deployment
       - name: Wait for services to stabilize
         run: |
-          aws ecs wait services-stable \
-            --cluster ${{ needs.infrastructure.outputs.ecs_cluster }} \
-            --services \
-              ${{ needs.infrastructure.outputs.frontend_service }} \
-              ${{ needs.infrastructure.outputs.backend_service }}
-
+          aws ecs wait services-stable --cluster ${{ needs.infrastructure.outputs.ecs_cluster }} --services ${{ needs.infrastructure.outputs.frontend_service }} ${{ needs.infrastructure.outputs.backend_service }}
       - name: Print deployment summary
         run: |
-          echo "Deployment complete"
           echo "App URL: http://${{ needs.infrastructure.outputs.alb_dns_name }}"
           echo "Grafana: http://${{ needs.infrastructure.outputs.monitoring_ip }}:3001"
           echo "Prometheus: http://${{ needs.infrastructure.outputs.monitoring_ip }}:9090"
