@@ -116,9 +116,9 @@ variable "grafana_port" {
 }
 
 variable "alertmanager_port" {
-    description = "How frequently Prometheus scrapes metrics."
-    type        = string
-    default     = "15s"
+  description = "Port AlertManager listens on."
+  type        = number
+  default     = 9093
 }
 
 variable "prometheus_scrape_interval" {
