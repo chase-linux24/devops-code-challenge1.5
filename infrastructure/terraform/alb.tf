@@ -17,7 +17,7 @@ resource "aws_lb" "main" {
 # ── Frontend Target Group ─────────────────────────────
 
 resource "aws_lb_target_group" "frontend" {
-    name        = "${var.project_name}-frontend-tg"
+    name        = "${var.project_name}-fe-tg"
     port        = var.frontend_port
     protocol    = "HTTP"
     vpc_id      = aws_vpc.main.id
@@ -42,7 +42,7 @@ resource "aws_lb_target_group" "frontend" {
 # ── Backend Target Group ──────────────────────────────
 
 resource "aws_lb_target_group" "backend" {
-  name        = "${var.project_name}-backend-tg"
+  name        = "${var.project_name}-be-tg"
   port        = var.backend_port
   protocol    = "HTTP"
   vpc_id      = aws_vpc.main.id
