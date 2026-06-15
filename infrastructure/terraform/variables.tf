@@ -72,13 +72,13 @@ variable "backend_memory" {
 variable "frontend_port" {
     description = "Port the backend container listens on."
     type        = number 
-    default     = 8080
+    default     = 3000
 }
 
 variable "backend_port" {
-    description = "Port the frontend container listens on."
+    description = "Port the backend container listens on."
     type        = number
-    default     = 3000
+    default     = 8080
 }
 
 variable "desired_tasks" {
